@@ -11,7 +11,7 @@
 
 | 方案 | 全称 | 说明 |
 |------|------|------|
-| **WT-LLR** | Wild-Type conditioned Log-Likelihood Ratio | 对野生型序列进行一次前向传播，在各突变位点计算对数似然比：`Σ [log P(mut_i｜WT) − log P(wt_i｜WT)]`。正值表示模型认为突变碱基更符合上下文 |
+| **WT-LLR** | Wild-Type conditioned Log-Likelihood Ratio | 对野生型序列进行一次前向传播，在各突变位点计算对数似然比：`Σ [log P(mut_i|WT) − log P(wt_i|WT)]`。正值表示模型认为突变碱基更符合上下文 |
 | **PLL-D** | Pseudo-Log-Likelihood Difference | 对野生型和突变体序列各进行一次前向传播，计算全序列伪对数似然之差：`PLL(mut) − PLL(WT)`。正值表示突变体序列整体更符合模型分布 |
 
 两种方案均为高效近似（无需 masking），推理速度快。

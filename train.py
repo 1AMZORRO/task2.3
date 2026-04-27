@@ -88,17 +88,18 @@ _N_MUTATION_PATTERN = re.compile(r"^[Nn]\d+[ACGUacgu]")   # N-notation 检测
 def parse_mutations(mutant_str: str):
     """
     解析标准突变字符串，例如 'C10A,U56C' → [('C', 10, 'A'), ('U', 56, 'C')]。
-    位置为 1-indexed；不处理 N-notation（返回空列表）。
+    返回三元组列表 (wt_nt, pos, mut_nt)，pos 为 1-indexed。
+    不处理 N-notation（返回空列表）。
     """
     result = []
     for token in re.split(r"[,;/]", mutant_str):
         token = token.strip()
         m = re.match(r"([ACGUTacgut])(\d+)([ACGUTacgut])", token)
         if m:
-            wt  = m.group(1).upper().replace("T", "U")
-            pos = int(m.group(2))          # 1-indexed
-            mut = m.group(3).upper().replace("T", "U")
-            result.append((wt, pos, mut))
+            wt_nt  = m.group(1).upper().replace("T", "U")
+            pos    = int(m.group(2))       # 1-indexed
+            mut_nt = m.group(3).upper().replace("T", "U")
+            result.append((wt_nt, pos, mut_nt))
     return result
 
 
@@ -123,14 +124,14 @@ def _reconstruct_wt(mut_df: pd.DataFrame) -> str | None:
             continue
         seq = list(str(row["sequence"]))
         ok  = True
-        for (wt_aa, pos, mut_aa) in mutations:
+        for (wt_nt, pos, mut_nt) in mutations:
             idx = pos - 1
             if idx < 0 or idx >= len(seq):
                 ok = False
                 break
             cur = seq[idx].upper()
-            if cur == mut_aa:
-                seq[idx] = wt_aa       # 将突变位点还原
+            if cur == mut_nt:
+                seq[idx] = wt_nt       # 将突变位点还原
             else:
                 ok = False             # 序列与突变注释不一致
                 break
@@ -227,21 +228,24 @@ def score_wt_llr(wt_logits: torch.Tensor, mutations: list, tokenizer) -> float:
     对野生型序列进行一次前向传播，提取所有位点的 logits，
     在各突变位点计算对数似然比：
 
-        WT-LLR = Σ_{i ∈ mutations} [ log P(mut_i | WT) − log P(wt_i | WT) ]
+        WT-LLR = Σ_{i ∈ mutations} [ log P(mut_nt_i | WT) − log P(wt_nt_i | WT) ]
 
     正值 → 模型认为突变碱基比野生型碱基更符合上下文（预测有益突变）。
+
+    位置映射：tokenizer 在序列首部插入 [CLS] 特殊 token（index 0），
+    因此 1-indexed 突变位置 pos 对应 token 数组下标 pos（即 tok_idx = pos）。
     """
     log_probs = F.log_softmax(wt_logits, dim=-1)  # (L, V)
     score     = 0.0
 
-    for (wt_aa, pos, mut_aa) in mutations:
-        # 1-indexed pos → token 索引 = pos（index 0 为 [CLS]）
+    for (wt_nt, pos, mut_nt) in mutations:
+        # 1-indexed pos 对应 token 下标 pos，因为 [CLS] 占据 index 0
         tok_idx = pos
         if tok_idx >= log_probs.shape[0]:
             continue
 
-        wt_id  = tokenizer.convert_tokens_to_ids(wt_aa)
-        mut_id = tokenizer.convert_tokens_to_ids(mut_aa)
+        wt_id  = tokenizer.convert_tokens_to_ids(wt_nt)
+        mut_id = tokenizer.convert_tokens_to_ids(mut_nt)
 
         if wt_id  in (tokenizer.unk_token_id, None):
             continue
