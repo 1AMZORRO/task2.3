@@ -1,0 +1,27 @@
+name: task2
+# RTX 3090 (计算能力 sm_86)，需要 CUDA >= 11.1
+# 推荐使用 CUDA 12.1，与 PyTorch 2.4.0 完全兼容
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip=23.3.2
+  # PyTorch + CUDA（通过 pytorch 官方 channel）
+  - pytorch::pytorch=2.4.0
+  - pytorch::pytorch-cuda=12.1
+  - pip:
+    # RNA 语言模型框架（含 RNAFM）
+    - multimolecule==0.0.9
+    # Transformers（必须 5.0.0，multimolecule==0.0.9 的兼容版本）
+    - transformers==5.0.0
+    # 数据处理
+    - pandas==2.1.4
+    - numpy==1.26.4
+    - scipy==1.11.4
+    # 工具
+    - tqdm==4.66.2
+    - matplotlib==3.8.2
+    - seaborn==0.13.2
